@@ -1,0 +1,6 @@
+[build]
+  command = "corepack pnpm build"
+  publish = "apps/customer-web/dist"
+
+[functions]
+  directory = "apps/customer-web/.netlify/functions-internal"
