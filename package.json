@@ -1,0 +1,11 @@
+{
+  "name": "nyanya-mbisi",
+  "private": true,
+  "packageManager": "pnpm@10.6.5",
+  "scripts": {
+    "dev": "corepack pnpm --filter @nyanya-mbisi/customer-web dev",
+    "build": "corepack pnpm --filter @nyanya-mbisi/customer-web build",
+    "test": "corepack pnpm --filter @nyanya-mbisi/customer-web test",
+    "typecheck": "corepack pnpm --filter @nyanya-mbisi/customer-web typecheck"
+  }
+}

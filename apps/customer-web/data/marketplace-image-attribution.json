@@ -1,0 +1,38 @@
+[
+  {
+    "key": "home-hero",
+    "filename": "home-hero.webp",
+    "title": "Fruit and vegetable stall",
+    "creator": "Rathfelder",
+    "license": "CC BY-SA 4.0",
+    "sourcePage": "https://commons.wikimedia.org/wiki/File:Fruit_and_vegetable_stall.jpg",
+    "downloadUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/File:Fruit%20and%20vegetable%20stall.jpg"
+  },
+  {
+    "key": "neema-fresh",
+    "filename": "neema-fresh.webp",
+    "title": "Fresh vegetable stall",
+    "creator": "Vardhanjp",
+    "license": "CC BY-SA 4.0",
+    "sourcePage": "https://commons.wikimedia.org/wiki/File:Fresh_vegetable_stall.jpg",
+    "downloadUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/File:Fresh%20vegetable%20stall.jpg"
+  },
+  {
+    "key": "kibuuka-butchery",
+    "filename": "kibuuka-butchery.webp",
+    "title": "Harpurhey Market meat stall 2025",
+    "creator": "Rathfelder",
+    "license": "CC0 1.0",
+    "sourcePage": "https://commons.wikimedia.org/wiki/File:Harpurhey_Market_meat_stall.jpg",
+    "downloadUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/File:Harpurhey%20Market%20meat%20stall.jpg"
+  },
+  {
+    "key": "sunrise-greens",
+    "filename": "sunrise-greens.webp",
+    "title": "Bangkok fruit stall",
+    "creator": "Michael",
+    "license": "CC0 1.0",
+    "sourcePage": "https://commons.wikimedia.org/wiki/File:Bangkok_fruit_stall.jpg",
+    "downloadUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/File:Bangkok%20fruit%20stall.jpg"
+  }
+]
