@@ -35,10 +35,16 @@ export default defineNuxtConfig({
   css: ["~/assets/css/main.css"],
   modules: ["@pinia/nuxt", "@nuxtjs/i18n", "@vite-pwa/nuxt", "@nuxt/image"],
   runtimeConfig: {
+    supabaseServiceRoleKey:
+      process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NUXT_SUPABASE_SERVICE_ROLE_KEY ?? "",
+    supabaseOtpDevCode:
+      process.env.SUPABASE_OTP_DEV_CODE ?? process.env.NUXT_SUPABASE_OTP_DEV_CODE ?? "2468",
     public: {
       appName: "Nyanya Mbisi",
       customerApiBase: "",
-      googleMapsApiKey: ""
+      googleMapsApiKey: process.env.NUXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "",
+      supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "",
+      supabaseAnonKey: process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? ""
     }
   },
   app: {

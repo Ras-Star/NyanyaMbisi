@@ -1,5 +1,5 @@
 import { createError, defineEventHandler, readBody } from "h3";
-import { createOtpSession } from "../../../../utils/mock-db";
+import { createOtpSession } from "../../../../data/customer-store";
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<{ fullName?: string; phone?: string }>(event);
@@ -10,4 +10,3 @@ export default defineEventHandler(async (event) => {
 
   return createOtpSession(body.fullName, body.phone);
 });
-

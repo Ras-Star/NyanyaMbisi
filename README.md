@@ -35,13 +35,21 @@ If you need a different port, run Nuxt directly instead of passing `--port` thro
 
 ## Optional Environment
 
-Create `apps/customer-web/.env` only if you want Google Maps in checkout:
+Create `apps/customer-web/.env` if you want Google Maps and/or Supabase:
 
 ```bash
 NUXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_key_here
+NUXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NUXT_PUBLIC_SUPABASE_ANON_KEY=your_public_anon_key_here
+SUPABASE_SERVICE_ROLE_KEY=your_server_only_service_role_key_here
+SUPABASE_OTP_DEV_CODE=2468
 ```
 
-Without that key, checkout still works and falls back to the built-in local service-area map.
+Without the Google Maps key, checkout still works and falls back to the built-in local service-area map.
+
+Without the Supabase values, the app still works with the existing in-memory local mock flow.
+
+To bootstrap the shared Supabase project, create the project in Supabase and run the SQL in `supabase/schema.sql`. That file creates the supplier, product, OTP, verified-customer, and order tables, then seeds the current marketplace catalog.
 
 ## What To Expect
 
@@ -76,4 +84,5 @@ Approve `esbuild` and `sharp`, then rerun:
 - Product photos are local `.webp` assets under [apps/customer-web/public/products](/Users/starthelight/Desktop/Web Projects/NyanyaMbisi/apps/customer-web/public/products), with attribution recorded in [apps/customer-web/data/product-image-attribution.json](/Users/starthelight/Desktop/Web Projects/NyanyaMbisi/apps/customer-web/data/product-image-attribution.json).
 - Marketplace and supplier hero photos are local `.webp` assets under [apps/customer-web/public/marketplace](/Users/starthelight/Desktop/Web Projects/NyanyaMbisi/apps/customer-web/public/marketplace), with attribution recorded in [apps/customer-web/data/marketplace-image-attribution.json](/Users/starthelight/Desktop/Web Projects/NyanyaMbisi/apps/customer-web/data/marketplace-image-attribution.json).
 - The current backend/API behavior is implemented with local Nitro server routes so the customer flow works end-to-end in the Nuxt app.
+- If `NUXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set, the Nitro routes will use Supabase for suppliers/products, OTP sessions, verified customer tokens, and orders. If not, they fall back to the existing local in-memory store.
 - If `NUXT_PUBLIC_GOOGLE_MAPS_API_KEY` is missing, the checkout page falls back to a local service-area map for pin confirmation.

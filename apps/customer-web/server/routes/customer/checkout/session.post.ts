@@ -1,5 +1,5 @@
 import { createError, defineEventHandler, readBody } from "h3";
-import { createCheckoutSession, getSupplierBySlug, getVerifiedCustomer } from "../../../utils/mock-db";
+import { createCheckoutSession, getSupplierBySlug, getVerifiedCustomer } from "../../../data/customer-store";
 import type { CartLine, CheckoutCustomer, DeliveryQuote, PaymentProvider } from "../../../../shared/types";
 
 export default defineEventHandler(async (event) => {
@@ -12,8 +12,8 @@ export default defineEventHandler(async (event) => {
     paymentProvider?: PaymentProvider;
   }>(event);
 
-  const verifiedCustomer = body.verifiedToken ? getVerifiedCustomer(body.verifiedToken) : null;
-  const supplier = body.supplierSlug ? getSupplierBySlug(body.supplierSlug) : null;
+  const verifiedCustomer = body.verifiedToken ? await getVerifiedCustomer(body.verifiedToken) : null;
+  const supplier = body.supplierSlug ? await getSupplierBySlug(body.supplierSlug) : null;
 
   if (!verifiedCustomer || !supplier || !body.items?.length || !body.customer || !body.quote || !body.paymentProvider) {
     throw createError({ statusCode: 400, statusMessage: "Checkout session payload is incomplete" });
@@ -24,6 +24,7 @@ export default defineEventHandler(async (event) => {
   }
 
   return createCheckoutSession({
+    supplierId: supplier.id,
     supplierName: supplier.name,
     items: body.items,
     customer: body.customer,

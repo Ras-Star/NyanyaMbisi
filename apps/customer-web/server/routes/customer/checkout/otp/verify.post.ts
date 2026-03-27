@@ -1,5 +1,5 @@
 import { createError, defineEventHandler, readBody } from "h3";
-import { verifyOtp } from "../../../../utils/mock-db";
+import { verifyOtp } from "../../../../data/customer-store";
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<{ sessionId?: string; code?: string }>(event);
@@ -16,4 +16,3 @@ export default defineEventHandler(async (event) => {
 
   return result;
 });
-

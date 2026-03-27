@@ -1,9 +1,9 @@
 import { createError, defineEventHandler, getRouterParam } from "h3";
-import { getSupplierBySlug } from "../../../utils/mock-db";
+import { getSupplierBySlug } from "../../../data/customer-store";
 
-export default defineEventHandler((event) => {
+export default defineEventHandler(async (event) => {
   const slug = getRouterParam(event, "slug");
-  const supplier = slug ? getSupplierBySlug(slug) : null;
+  const supplier = slug ? await getSupplierBySlug(slug) : null;
 
   if (!supplier) {
     throw createError({ statusCode: 404, statusMessage: "Supplier not found" });
@@ -11,4 +11,3 @@ export default defineEventHandler((event) => {
 
   return supplier;
 });
-
