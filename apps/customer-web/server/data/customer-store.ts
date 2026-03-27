@@ -254,6 +254,87 @@ function buildOrderTimeline(): OrderSummary["timeline"] {
   ];
 }
 
+function buildEphemeralCustomerProfile({
+  phone,
+  fullName = "",
+  defaultPin = null
+}: {
+  phone: string;
+  fullName?: string;
+  defaultPin?: MapPin | null;
+}): CustomerProfile {
+  const now = new Date().toISOString();
+
+  return {
+    authUserId: "",
+    phone,
+    fullName,
+    defaultPin,
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+function buildFallbackNotification(order: OrderSummary): CustomerNotification {
+  if (order.status === "Delivered") {
+    return {
+      id: `fallback-${order.orderId}`,
+      orderId: order.orderId,
+      eventType: "order_delivered",
+      title: "Order delivered",
+      body: `${order.supplierName} has completed your delivery.`,
+      readAt: null,
+      createdAt: order.createdAt
+    };
+  }
+
+  if (order.status === "Out for Delivery") {
+    return {
+      id: `fallback-${order.orderId}`,
+      orderId: order.orderId,
+      eventType: "order_out_for_delivery",
+      title: "Order on the way",
+      body: `${order.supplierName} is dispatching your basket now.`,
+      readAt: null,
+      createdAt: order.createdAt
+    };
+  }
+
+  if (order.status === "Preparing") {
+    return {
+      id: `fallback-${order.orderId}`,
+      orderId: order.orderId,
+      eventType: "order_preparing",
+      title: "Order being prepared",
+      body: `${order.supplierName} is preparing your basket.`,
+      readAt: null,
+      createdAt: order.createdAt
+    };
+  }
+
+  if (order.paymentStatus === "pending") {
+    return {
+      id: `fallback-${order.orderId}`,
+      orderId: order.orderId,
+      eventType: "payment_requested",
+      title: "Payment prompt sent",
+      body: `Approve the ${order.paymentProvider === "mtn" ? "MTN MoMo" : "Airtel Money"} request to continue.`,
+      readAt: null,
+      createdAt: order.createdAt
+    };
+  }
+
+  return {
+    id: `fallback-${order.orderId}`,
+    orderId: order.orderId,
+    eventType: "order_received",
+    title: "Order received",
+    body: `${order.supplierName} has received your order.`,
+    readAt: null,
+    createdAt: order.createdAt
+  };
+}
+
 function buildInitialOrderEvents(orderId: string, customerAuthId: string, supplierName: string): Array<{
   order_id: string;
   customer_auth_id: string;
@@ -478,7 +559,7 @@ export async function createCheckoutSession({
   quote,
   paymentProvider
 }: {
-  customerAuthId: string;
+  customerAuthId?: string | null;
   supplierId: string;
   supplierName: string;
   items: CartLine[];
@@ -536,7 +617,7 @@ export async function createCheckoutSession({
 
     const { error } = await client.from("orders").insert({
       id: orderId,
-      customer_auth_id: customerAuthId,
+      customer_auth_id: customerAuthId ?? null,
       supplier_id: supplierId,
       supplier_name: supplierName,
       items,
@@ -555,12 +636,14 @@ export async function createCheckoutSession({
       throw error;
     }
 
-    const { error: eventError } = await client.from("order_events").insert(
-      buildInitialOrderEvents(orderId, customerAuthId, supplierName)
-    );
+    if (customerAuthId) {
+      const { error: eventError } = await client.from("order_events").insert(
+        buildInitialOrderEvents(orderId, customerAuthId, supplierName)
+      );
 
-    if (eventError) {
-      throw eventError;
+      if (eventError) {
+        throw eventError;
+      }
     }
 
     return session;
@@ -577,6 +660,10 @@ export async function createCheckoutSession({
 }
 
 export async function getCustomerProfile(authUserId: string, phone: string): Promise<CustomerProfile> {
+  if (!authUserId) {
+    return buildEphemeralCustomerProfile({ phone });
+  }
+
   const client = getServerSupabaseClient();
   const fallbackProfile: CustomerProfile = {
     authUserId,
@@ -635,6 +722,14 @@ export async function updateCustomerProfile(
   phone: string,
   patch: Partial<Pick<CustomerProfile, "fullName" | "defaultPin">>
 ): Promise<CustomerProfile> {
+  if (!authUserId) {
+    return buildEphemeralCustomerProfile({
+      phone,
+      fullName: patch.fullName ?? "",
+      defaultPin: patch.defaultPin ?? null
+    });
+  }
+
   const client = getServerSupabaseClient();
 
   if (!client) {
@@ -675,7 +770,13 @@ export async function updateCustomerProfile(
   }
 }
 
-export async function listOrders(customerAuthId: string) {
+export async function listOrders({
+  customerAuthId,
+  phone
+}: {
+  customerAuthId?: string | null;
+  phone?: string;
+}) {
   const client = getServerSupabaseClient();
 
   if (!client) {
@@ -683,13 +784,22 @@ export async function listOrders(customerAuthId: string) {
   }
 
   try {
-    const { data, error } = await client
+    let query = client
       .from("orders")
       .select(
         "id, customer_auth_id, supplier_name, items, status, payment_provider, payment_reference, payment_status, timeline, quote, customer, created_at, total_ugx"
       )
-      .eq("customer_auth_id", customerAuthId)
       .order("created_at", { ascending: false });
+
+    if (customerAuthId) {
+      query = query.eq("customer_auth_id", customerAuthId);
+    } else if (phone) {
+      query = query.filter("customer->>phone", "eq", phone);
+    } else {
+      return [];
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       throw error;
@@ -702,7 +812,7 @@ export async function listOrders(customerAuthId: string) {
   }
 }
 
-export async function getOrder(orderId: string, customerAuthId?: string) {
+export async function getOrder(orderId: string, options?: { customerAuthId?: string | null; phone?: string }) {
   const client = getServerSupabaseClient();
 
   if (!client) {
@@ -717,8 +827,10 @@ export async function getOrder(orderId: string, customerAuthId?: string) {
       )
       .eq("id", orderId);
 
-    if (customerAuthId) {
-      query = query.eq("customer_auth_id", customerAuthId);
+    if (options?.customerAuthId) {
+      query = query.eq("customer_auth_id", options.customerAuthId);
+    } else if (options?.phone) {
+      query = query.filter("customer->>phone", "eq", options.phone);
     }
 
     const { data, error } = await query.maybeSingle();
@@ -738,7 +850,22 @@ export async function getOrder(orderId: string, customerAuthId?: string) {
   }
 }
 
-export async function listNotifications(customerAuthId: string) {
+export async function listNotifications({
+  customerAuthId,
+  phone
+}: {
+  customerAuthId?: string | null;
+  phone?: string;
+}) {
+  if (!customerAuthId) {
+    if (!phone) {
+      return [] as CustomerNotification[];
+    }
+
+    const orders = await listOrders({ phone });
+    return orders.slice(0, 20).map(buildFallbackNotification);
+  }
+
   const client = getServerSupabaseClient();
 
   if (!client) {

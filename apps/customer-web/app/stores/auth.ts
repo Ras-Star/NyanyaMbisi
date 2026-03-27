@@ -7,15 +7,21 @@ export const useAuthStore = defineStore("customer-auth", {
     ready: false,
     session: null as Session | null,
     user: null as User | null,
+    fallbackToken: "",
+    fallbackPhone: "",
+    fallbackFullName: "",
     profile: null as CustomerProfile | null,
     notifications: [] as CustomerNotification[],
     activityOpen: false
   }),
   getters: {
-    isAuthenticated: (state) => Boolean(state.session?.access_token && state.user),
+    authMode: (state): "supabase" | "fallback" | "none" =>
+      state.session?.access_token && state.user ? "supabase" : state.fallbackToken && state.fallbackPhone ? "fallback" : "none",
+    isAuthenticated: (state) => Boolean((state.session?.access_token && state.user) || (state.fallbackToken && state.fallbackPhone)),
     unreadNotificationCount: (state) => state.notifications.filter((item) => !item.readAt).length,
-    customerPhone: (state) => state.user?.phone ?? state.profile?.phone ?? "",
-    customerName: (state) => state.profile?.fullName?.trim() || ""
+    customerPhone: (state) => state.user?.phone ?? state.profile?.phone ?? state.fallbackPhone ?? "",
+    customerName: (state) => state.profile?.fullName?.trim() || state.fallbackFullName.trim() || "",
+    authToken: (state) => state.session?.access_token ?? state.fallbackToken ?? ""
   },
   actions: {
     setReady(value: boolean) {
@@ -24,6 +30,25 @@ export const useAuthStore = defineStore("customer-auth", {
     setSession(session: Session | null) {
       this.session = session;
       this.user = session?.user ?? null;
+
+      if (session?.user) {
+        this.fallbackToken = "";
+        this.fallbackPhone = "";
+        this.fallbackFullName = "";
+      }
+    },
+    setFallbackSession(payload: { token: string; phone: string; fullName?: string }) {
+      this.session = null;
+      this.user = null;
+      this.fallbackToken = payload.token;
+      this.fallbackPhone = payload.phone;
+      this.fallbackFullName = payload.fullName?.trim() ?? "";
+    },
+    hydrateLocalAuth(payload: Partial<{ fallbackToken: string; fallbackPhone: string; fallbackFullName: string; notifications: CustomerNotification[] }>) {
+      this.fallbackToken = payload.fallbackToken ?? "";
+      this.fallbackPhone = payload.fallbackPhone ?? "";
+      this.fallbackFullName = payload.fallbackFullName ?? "";
+      this.notifications = payload.notifications ?? [];
     },
     setProfile(profile: CustomerProfile | null) {
       this.profile = profile;
@@ -54,6 +79,9 @@ export const useAuthStore = defineStore("customer-auth", {
     clear() {
       this.session = null;
       this.user = null;
+      this.fallbackToken = "";
+      this.fallbackPhone = "";
+      this.fallbackFullName = "";
       this.profile = null;
       this.notifications = [];
       this.activityOpen = false;

@@ -3,6 +3,9 @@ import { requireAuthenticatedCustomer } from "../../utils/auth";
 import { listNotifications } from "../../data/customer-store";
 
 export default defineEventHandler(async (event) => {
-  const { user } = await requireAuthenticatedCustomer(event);
-  return listNotifications(user.id);
+  const customer = await requireAuthenticatedCustomer(event);
+  return listNotifications({
+    customerAuthId: customer.userId,
+    phone: customer.phone
+  });
 });

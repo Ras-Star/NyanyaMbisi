@@ -1,4 +1,4 @@
-import { normalizePhoneNumber } from "~~/shared/phone";
+import { getUgandanMobileProvider, normalizePhoneNumber } from "~~/shared/phone";
 import type { MapPin } from "~~/shared/types";
 import { useAuthStore } from "~/stores/auth";
 import { useCartStore } from "~/stores/cart";
@@ -7,12 +7,38 @@ import { useCustomerStore } from "~/stores/customer";
 let authInitPromise: Promise<void> | null = null;
 let authSubscriptionBound = false;
 
+type PhoneSignInStart = {
+  phone: string;
+  provider: "mtn" | "airtel";
+  channel: "sms" | "fallback";
+  sessionId?: string;
+  devCode?: string;
+};
+
 export function useCustomerAuth() {
   const authStore = useAuthStore();
   const customerStore = useCustomerStore();
   const cartStore = useCartStore();
   const api = useCustomerApi();
   const supabase = useSupabaseBrowserClient();
+
+  function syncPreferredPaymentProvider(phone: string) {
+    const provider = getUgandanMobileProvider(phone);
+
+    if (provider) {
+      customerStore.setPaymentProvider(provider);
+    }
+  }
+
+  function isUnsupportedPhoneProviderError(message: string) {
+    const normalized = message.toLowerCase();
+
+    return (
+      normalized.includes("unsupported phone provider") ||
+      normalized.includes("phone provider") ||
+      normalized.includes("sms provider")
+    );
+  }
 
   async function refreshProfile() {
     if (!authStore.isAuthenticated) {
@@ -28,6 +54,7 @@ export function useCustomerAuth() {
       phone: profile.phone || authStore.customerPhone,
       pin: profile.defaultPin ?? customerStore.draft.pin
     });
+    syncPreferredPaymentProvider(profile.phone || authStore.customerPhone);
 
     return profile;
   }
@@ -38,9 +65,15 @@ export function useCustomerAuth() {
       return [];
     }
 
+    const previousReadAtById = new Map(authStore.notifications.map((item) => [item.id, item.readAt]));
     const notifications = await api.getNotifications();
-    authStore.setNotifications(notifications);
-    return notifications;
+    const mergedNotifications = notifications.map((item) => ({
+      ...item,
+      readAt: item.readAt ?? previousReadAtById.get(item.id) ?? null
+    }));
+
+    authStore.setNotifications(mergedNotifications);
+    return mergedNotifications;
   }
 
   async function refreshCustomerState() {
@@ -62,6 +95,16 @@ export function useCustomerAuth() {
       authStore.setSession(session);
 
       if (!session?.user) {
+        if (authStore.authMode === "fallback") {
+          customerStore.updateDraft({
+            phone: authStore.customerPhone
+          });
+          void refreshCustomerState().finally(() => {
+            authStore.setReady(true);
+          });
+          return;
+        }
+
         authStore.clear();
         cartStore.clearCart();
         customerStore.resetForSignOut();
@@ -72,6 +115,7 @@ export function useCustomerAuth() {
       customerStore.updateDraft({
         phone: session.user.phone ?? customerStore.draft.phone
       });
+      syncPreferredPaymentProvider(session.user.phone ?? customerStore.draft.phone);
 
       void refreshCustomerState().finally(() => {
         authStore.setReady(true);
@@ -91,6 +135,14 @@ export function useCustomerAuth() {
     }
 
     if (!supabase) {
+      if (authStore.authMode === "fallback") {
+        customerStore.updateDraft({
+          phone: authStore.customerPhone
+        });
+        syncPreferredPaymentProvider(authStore.customerPhone);
+        await refreshCustomerState();
+      }
+
       authStore.setReady(true);
       return;
     }
@@ -109,6 +161,13 @@ export function useCustomerAuth() {
           customerStore.updateDraft({
             phone: session.user.phone ?? customerStore.draft.phone
           });
+          syncPreferredPaymentProvider(session.user.phone ?? customerStore.draft.phone);
+          await refreshCustomerState();
+        } else if (authStore.authMode === "fallback") {
+          customerStore.updateDraft({
+            phone: authStore.customerPhone
+          });
+          syncPreferredPaymentProvider(authStore.customerPhone);
           await refreshCustomerState();
         }
 
@@ -123,40 +182,103 @@ export function useCustomerAuth() {
 
   async function getAccessToken() {
     await initialize();
-    return authStore.session?.access_token ?? "";
+    return authStore.authToken;
   }
 
-  async function signInWithPhone(phone: string) {
-    if (!supabase) {
-      throw new Error("Supabase phone login is not configured.");
+  async function signInWithPhone(phone: string): Promise<PhoneSignInStart> {
+    const normalizedPhone = normalizePhoneNumber(phone);
+    const provider = getUgandanMobileProvider(phone);
+
+    if (!normalizedPhone || !provider) {
+      throw new Error("Use an MTN Uganda or Airtel Uganda mobile number starting with +256 or 0.");
     }
 
-    const normalizedPhone = normalizePhoneNumber(phone);
+    syncPreferredPaymentProvider(normalizedPhone);
 
-    if (!normalizedPhone) {
-      throw new Error("Enter a valid phone number in international format.");
+    if (!supabase) {
+      const fallback = await api.startOtp({
+        fullName: authStore.customerName,
+        phone: normalizedPhone
+      });
+
+      return {
+        phone: fallback.phone,
+        provider,
+        channel: "fallback",
+        sessionId: fallback.sessionId,
+        devCode: fallback.devCode
+      };
     }
 
     const { error } = await supabase.auth.signInWithOtp({
       phone: normalizedPhone
     });
 
-    if (error) {
-      throw new Error(error.message);
+    if (!error) {
+      return {
+        phone: normalizedPhone,
+        provider,
+        channel: "sms"
+      };
     }
 
-    return normalizedPhone;
+    if (isUnsupportedPhoneProviderError(error.message)) {
+      const fallback = await api.startOtp({
+        fullName: authStore.customerName,
+        phone: normalizedPhone
+      });
+
+      return {
+        phone: fallback.phone,
+        provider,
+        channel: "fallback",
+        sessionId: fallback.sessionId,
+        devCode: fallback.devCode
+      };
+    }
+
+    throw new Error(error.message);
   }
 
-  async function verifyPhoneOtp(phone: string, otpCode: string) {
-    if (!supabase) {
-      throw new Error("Supabase phone login is not configured.");
-    }
-
+  async function verifyPhoneOtp({
+    phone,
+    otpCode,
+    sessionId
+  }: {
+    phone: string;
+    otpCode: string;
+    sessionId?: string;
+  }) {
     const normalizedPhone = normalizePhoneNumber(phone);
 
     if (!normalizedPhone) {
-      throw new Error("Enter a valid phone number in international format.");
+      throw new Error("Use an MTN Uganda or Airtel Uganda mobile number starting with +256 or 0.");
+    }
+
+    if (sessionId) {
+      const data = await api.verifyOtp({
+        sessionId,
+        code: otpCode.trim()
+      });
+
+      authStore.setFallbackSession({
+        token: data.token,
+        phone: data.customer.phone || normalizedPhone,
+        fullName: data.customer.fullName || authStore.customerName
+      });
+      customerStore.updateDraft({
+        phone: data.customer.phone || normalizedPhone
+      });
+      syncPreferredPaymentProvider(data.customer.phone || normalizedPhone);
+
+      await refreshCustomerState();
+      authStore.setReady(true);
+
+      return data;
+    }
+
+    if (!supabase) {
+      throw new Error("Phone sign-in is not configured.");
     }
 
     const { data, error } = await supabase.auth.verifyOtp({
@@ -173,6 +295,7 @@ export function useCustomerAuth() {
     customerStore.updateDraft({
       phone: data.user?.phone ?? normalizedPhone
     });
+    syncPreferredPaymentProvider(data.user?.phone ?? normalizedPhone);
 
     await refreshCustomerState();
     authStore.setReady(true);
@@ -194,6 +317,12 @@ export function useCustomerAuth() {
   }
 
   async function markNotificationRead(notificationId: string) {
+    if (authStore.authMode === "fallback") {
+      const readAt = new Date().toISOString();
+      authStore.markNotificationReadLocal(notificationId, readAt);
+      return authStore.notifications.find((item) => item.id === notificationId) ?? null;
+    }
+
     const notification = await api.markNotificationRead(notificationId);
 
     if (notification?.readAt) {
@@ -204,7 +333,7 @@ export function useCustomerAuth() {
   }
 
   async function signOut() {
-    if (supabase) {
+    if (supabase && authStore.session) {
       const { error } = await supabase.auth.signOut();
 
       if (error) {

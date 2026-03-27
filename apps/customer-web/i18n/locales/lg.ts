@@ -165,6 +165,7 @@ export default {
     subtitle: "Londa omukutu gwa mobile money era tonda okusaba okusasula.",
     provider: "Omukutu",
     chooseRail: "Londa omukutu gwa mobile money",
+    recommended: "Gwe tusoose okuteesa ku nnamba eno",
     mtn: "MTN MoMo",
     airtel: "Airtel Money",
     mtnHint: "Kirungi ku bisanyizo bya MTN ku ssimu",
@@ -206,10 +207,15 @@ export default {
   },
   login: {
     title: "Yingira n'ennamba yo ey'essimu",
-    subtitle: "Kozesa code ya SMS okuva ku Supabase phone auth okufunamu akasante, checkout, oda, n'amategeezo.",
+    subtitle: "Kozesa ennamba ya MTN Uganda oba Airtel Uganda okuggulawo akasante, checkout, oda, n'amategeezo.",
+    redirectHint: "Nga omaze okuyingira, tujja kukutwala ku {destination}.",
+    providerDetected: "Tuzudde okuva ku nnamba yo ey'essimu.",
     sendCode: "Weereza code",
     verifyCode: "Kakasa ogende mu maaso",
     codeSent: "Code eweerezeddwa ku {phone}. Giteeke wansi oyongereyo.",
+    codeSentFallback: "Code ey'omu app etegekeleddwa {phone}. Giteeke wansi oyongereyo.",
+    fallbackTitle: "Code ey'akaseera kano ey'okuyingira",
+    fallbackBody: "Okutuusa SMS mu Supabase tekunnategekebwa, kale build eno ey'okugezesa ekkozesa code ey'omu app okukakasa.",
     success: "Essimu ekakasiddwa. Tukutwala mu maaso..."
   },
   location: {

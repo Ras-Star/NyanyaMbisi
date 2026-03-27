@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
+import { getUgandanMobileProvider } from "~~/shared/phone";
 import { useAuthStore } from "~/stores/auth";
 import { useCartStore } from "~/stores/cart";
 import { useCustomerStore } from "~/stores/customer";
@@ -26,6 +27,17 @@ useHead({
 
 const loading = ref(false);
 const errorMessage = ref("");
+const suggestedProvider = computed(() => getUgandanMobileProvider(customerPhone.value));
+
+watch(
+  suggestedProvider,
+  (provider) => {
+    if (provider) {
+      customerStore.setPaymentProvider(provider);
+    }
+  },
+  { immediate: true }
+);
 
 async function createSession() {
   errorMessage.value = "";
@@ -106,6 +118,11 @@ async function createSession() {
               <strong>{{ t("payment.airtel") }}</strong>
               <span class="muted">{{ t("payment.airtelHint") }}</span>
             </button>
+          </div>
+
+          <div v-if="suggestedProvider" class="status-note">
+            <strong>{{ t("payment.recommended") }}</strong>
+            <span>{{ suggestedProvider === "mtn" ? t("payment.mtn") : t("payment.airtel") }}</span>
           </div>
 
           <button type="button" class="btn btn--primary" :disabled="loading" @click="createSession">

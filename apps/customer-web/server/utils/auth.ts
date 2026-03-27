@@ -1,5 +1,5 @@
 import { createError, getHeader, type H3Event } from "h3";
-import type { User } from "@supabase/supabase-js";
+import { getVerifiedCustomer } from "../data/customer-store";
 import { getServerSupabaseClient } from "./supabase";
 
 function readBearerToken(event: H3Event) {
@@ -21,21 +21,36 @@ export async function requireAuthenticatedCustomer(event: H3Event) {
 
   const client = getServerSupabaseClient();
 
-  if (!client) {
-    throw createError({ statusCode: 500, statusMessage: "Supabase server configuration is missing" });
+  if (client) {
+    const {
+      data: { user },
+      error
+    } = await client.auth.getUser(accessToken);
+
+    if (!error && user) {
+      return {
+        accessToken,
+        mode: "supabase" as const,
+        user,
+        userId: user.id,
+        phone: user.phone ?? "",
+        fullName: String(user.user_metadata?.full_name ?? "")
+      };
+    }
   }
 
-  const {
-    data: { user },
-    error
-  } = await client.auth.getUser(accessToken);
+  const verifiedCustomer = await getVerifiedCustomer(accessToken);
 
-  if (error || !user) {
-    throw createError({ statusCode: 401, statusMessage: "Session is invalid or expired" });
+  if (verifiedCustomer) {
+    return {
+      accessToken,
+      mode: "fallback" as const,
+      user: null,
+      userId: null,
+      phone: verifiedCustomer.phone,
+      fullName: verifiedCustomer.fullName
+    };
   }
 
-  return {
-    accessToken,
-    user
-  } satisfies { accessToken: string; user: User };
+  throw createError({ statusCode: 401, statusMessage: "Session is invalid or expired" });
 }

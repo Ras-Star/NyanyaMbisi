@@ -25,8 +25,8 @@ export function useCustomerApi() {
   const authStore = useAuthStore();
   const route = (path: string) => resolveRoute(config.public.customerApiBase, path);
   const authHeaders = async (): Promise<Record<string, string>> => {
-    const accessToken = authStore.session?.access_token ?? "";
-    return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+    const token = authStore.authToken;
+    return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
   return {

@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Session and code are required" });
   }
 
-  const result = verifyOtp(body.sessionId, body.code);
+  const result = await verifyOtp(body.sessionId, body.code);
 
   if (!result) {
     throw createError({ statusCode: 401, statusMessage: "OTP code is invalid or expired" });

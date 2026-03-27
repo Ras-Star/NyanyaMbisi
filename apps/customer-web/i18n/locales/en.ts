@@ -165,6 +165,7 @@ export default {
     subtitle: "Choose your mobile money provider and generate the payment request.",
     provider: "Provider",
     chooseRail: "Choose the mobile money rail",
+    recommended: "Recommended for this phone number",
     mtn: "MTN MoMo",
     airtel: "Airtel Money",
     mtnHint: "Best for MTN phone prompts",
@@ -206,10 +207,15 @@ export default {
   },
   login: {
     title: "Sign in with your phone",
-    subtitle: "Use the SMS code from Supabase phone auth to unlock cart, checkout, orders, and alerts.",
+    subtitle: "Use an MTN Uganda or Airtel Uganda mobile number to unlock cart, checkout, orders, and alerts.",
+    redirectHint: "After sign-in, we will take you to {destination}.",
+    providerDetected: "Detected from your phone number.",
     sendCode: "Send code",
     verifyCode: "Verify and continue",
     codeSent: "Code sent to {phone}. Enter it below to continue.",
+    codeSentFallback: "Temporary in-app code prepared for {phone}. Enter it below to continue.",
+    fallbackTitle: "Temporary sign-in code",
+    fallbackBody: "SMS delivery is not configured in Supabase yet, so this staging build is using an in-app verification code.",
     success: "Phone verified. Redirecting..."
   },
   location: {

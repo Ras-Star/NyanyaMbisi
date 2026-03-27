@@ -4,7 +4,7 @@ import { createCheckoutSession, getSupplierBySlug, updateCustomerProfile } from 
 import type { CartLine, CheckoutCustomer, DeliveryQuote, PaymentProvider } from "../../../../shared/types";
 
 export default defineEventHandler(async (event) => {
-  const { user } = await requireAuthenticatedCustomer(event);
+  const customerAccount = await requireAuthenticatedCustomer(event);
   const body = await readBody<{
     supplierSlug?: string;
     items?: CartLine[];
@@ -27,19 +27,19 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Full name is required before creating an order" });
   }
 
-  const phone = user.phone ?? body.customer.phone;
+  const phone = customerAccount.phone || body.customer.phone;
 
   if (!phone) {
     throw createError({ statusCode: 400, statusMessage: "Signed-in customer phone number is unavailable" });
   }
 
-  await updateCustomerProfile(user.id, phone, {
+  await updateCustomerProfile(customerAccount.userId ?? "", phone, {
     fullName: body.customer.fullName.trim(),
     defaultPin: body.customer.pin
   });
 
   return createCheckoutSession({
-    customerAuthId: user.id,
+    customerAuthId: customerAccount.userId,
     supplierId: supplier.id,
     supplierName: supplier.name,
     items: body.items,
