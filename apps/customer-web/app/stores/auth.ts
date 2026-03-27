@@ -52,6 +52,14 @@ export const useAuthStore = defineStore("customer-auth", {
     },
     setProfile(profile: CustomerProfile | null) {
       this.profile = profile;
+
+      if (!this.user && profile?.phone) {
+        this.fallbackPhone = profile.phone;
+      }
+
+      if (!this.user && profile?.fullName?.trim()) {
+        this.fallbackFullName = profile.fullName.trim();
+      }
     },
     setNotifications(notifications: CustomerNotification[]) {
       this.notifications = notifications;

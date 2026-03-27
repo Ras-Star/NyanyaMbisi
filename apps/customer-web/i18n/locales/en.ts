@@ -6,6 +6,7 @@ export default {
     added: "Added",
     continue: "Continue",
     calculate: "Refresh quote",
+    cancel: "Cancel",
     close: "Close",
     loading: "Loading",
     empty: "Nothing here yet",
@@ -204,6 +205,18 @@ export default {
     read: "Read",
     emptyTitle: "No notifications yet",
     emptyBody: "Order updates and delivery progress will appear here."
+  },
+  account: {
+    warmGreeting: "Welcome back",
+    warmGreetingNamed: "Welcome back, {name}",
+    addNameTitle: "Add your name",
+    addNameHint: "Save the name you want us to use when welcoming you back.",
+    nameHint: "Update the name we use to welcome you across the app.",
+    editName: "Edit name",
+    nameLabel: "Preferred name",
+    saveName: "Save name",
+    nameRequired: "Enter the name you want us to save.",
+    nameSaved: "Your name has been updated."
   },
   login: {
     title: "Sign in with your phone",

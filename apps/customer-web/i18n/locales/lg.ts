@@ -6,6 +6,7 @@ export default {
     added: "Kigattiddwa",
     continue: "Weyongereyo",
     calculate: "Ddamu okubala",
+    cancel: "Sazaamu",
     close: "Ggalawo",
     loading: "Kikyali kulindirira",
     empty: "Tewali kintu wano",
@@ -204,6 +205,18 @@ export default {
     read: "Gabikkuddwa",
     emptyTitle: "Tewali mategeezo",
     emptyBody: "Okukyuka kwa oda n'entambula y'okutuusa bijja kulabika wano."
+  },
+  account: {
+    warmGreeting: "Tukwaniriza nate",
+    warmGreetingNamed: "Tukwaniriza nate, {name}",
+    addNameTitle: "Teekawo erinnya lyo",
+    addNameHint: "Tereka erinnya ly'oyagala tukozese nga tukwaniriza nate.",
+    nameHint: "Kyusa erinnya lye tukozesa okukwaniriza mu app yonna.",
+    editName: "Kyusa erinnya",
+    nameLabel: "Erinnya ly'oyagala okukozesebwa",
+    saveName: "Tereka erinnya",
+    nameRequired: "Teekamu erinnya ly'oyagala okuterekebwa.",
+    nameSaved: "Erinnya lyo likyusiddwa."
   },
   login: {
     title: "Yingira n'ennamba yo ey'essimu",

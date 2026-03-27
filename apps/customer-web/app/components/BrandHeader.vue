@@ -7,8 +7,12 @@ const cartStore = useCartStore();
 const authStore = useAuthStore();
 const route = useRoute();
 const { itemCount } = storeToRefs(cartStore);
-const { isAuthenticated, unreadNotificationCount, customerPhone } = storeToRefs(authStore);
+const { isAuthenticated, unreadNotificationCount, customerName } = storeToRefs(authStore);
 const { t } = useI18n();
+
+const warmGreeting = computed(() =>
+  customerName.value ? t("account.warmGreetingNamed", { name: customerName.value }) : t("account.warmGreeting")
+);
 
 function openNotifications() {
   authStore.setActivityOpen(true);
@@ -41,7 +45,7 @@ function openNotifications() {
           <strong v-if="unreadNotificationCount">{{ unreadNotificationCount }}</strong>
         </button>
         <NuxtLink v-if="isAuthenticated" class="header__account" to="/orders">
-          <span>{{ customerPhone }}</span>
+          <span>{{ warmGreeting }}</span>
           <strong>{{ t("nav.orders") }}</strong>
         </NuxtLink>
         <NuxtLink v-if="isAuthenticated" class="header__cart" to="/cart">

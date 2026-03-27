@@ -9,8 +9,8 @@ definePageMeta({
 
 const api = useCustomerApi();
 const authStore = useAuthStore();
-const { profile, customerPhone } = storeToRefs(authStore);
-const { initialize, signOut } = useCustomerAuth();
+const { customerPhone, customerName } = storeToRefs(authStore);
+const { initialize, saveProfile, signOut } = useCustomerAuth();
 const { formatUGX } = useCurrency();
 const { t } = useI18n();
 
@@ -29,6 +29,61 @@ useHead({
   title: "Orders"
 });
 
+const editingName = ref(false);
+const nameDraft = ref("");
+const nameError = ref("");
+const nameStatus = ref("");
+const savingName = ref(false);
+const warmGreeting = computed(() =>
+  customerName.value ? t("account.warmGreetingNamed", { name: customerName.value }) : t("account.warmGreeting")
+);
+
+watch(
+  customerName,
+  (value) => {
+    nameDraft.value = value || "";
+  },
+  { immediate: true }
+);
+
+function startEditingName() {
+  nameError.value = "";
+  nameStatus.value = "";
+  nameDraft.value = customerName.value || "";
+  editingName.value = true;
+}
+
+function cancelEditingName() {
+  editingName.value = false;
+  nameError.value = "";
+  nameStatus.value = "";
+  nameDraft.value = customerName.value || "";
+}
+
+async function saveName() {
+  nameError.value = "";
+  nameStatus.value = "";
+
+  if (!nameDraft.value.trim()) {
+    nameError.value = t("account.nameRequired");
+    return;
+  }
+
+  savingName.value = true;
+
+  try {
+    await saveProfile({
+      fullName: nameDraft.value.trim()
+    });
+    nameStatus.value = t("account.nameSaved");
+    editingName.value = false;
+  } catch (error) {
+    nameError.value = (error as Error).message;
+  } finally {
+    savingName.value = false;
+  }
+}
+
 async function handleSignOut() {
   await signOut();
   await navigateTo("/");
@@ -44,14 +99,40 @@ async function handleSignOut() {
     </section>
 
     <section class="surface-card orders-page__hero">
-      <div>
-        <span class="eyebrow">{{ t("common.customer") }}</span>
-        <h2 class="title-md">{{ profile?.fullName || customerPhone }}</h2>
+      <div class="orders-page__hero-copy">
+        <span class="eyebrow">{{ warmGreeting }}</span>
+        <h2 class="title-md">{{ customerName || t("account.addNameTitle") }}</h2>
         <p class="muted">{{ customerPhone }}</p>
+        <p class="muted">{{ customerName ? t("account.nameHint") : t("account.addNameHint") }}</p>
       </div>
-      <button type="button" class="btn btn--secondary" @click="handleSignOut">
-        {{ t("nav.signOut") }}
-      </button>
+      <div class="orders-page__hero-actions">
+        <button v-if="!editingName" type="button" class="btn btn--primary" @click="startEditingName">
+          {{ t("account.editName") }}
+        </button>
+        <button type="button" class="btn btn--secondary" @click="handleSignOut">
+          {{ t("nav.signOut") }}
+        </button>
+      </div>
+      <div v-if="editingName" class="orders-page__editor surface-panel">
+        <label class="field-stack">
+          <span class="field-label">{{ t("account.nameLabel") }}</span>
+          <input v-model="nameDraft" class="field-input" type="text" :placeholder="t('checkout.name')" />
+        </label>
+        <div class="orders-page__editor-actions">
+          <button type="button" class="btn btn--primary" :disabled="savingName" @click="saveName">
+            {{ t("account.saveName") }}
+          </button>
+          <button type="button" class="btn btn--secondary" :disabled="savingName" @click="cancelEditingName">
+            {{ t("common.cancel") }}
+          </button>
+        </div>
+      </div>
+      <div v-if="nameStatus" class="status-note is-success">
+        <strong>{{ nameStatus }}</strong>
+      </div>
+      <div v-if="nameError" class="status-note is-danger">
+        <strong>{{ nameError }}</strong>
+      </div>
     </section>
 
     <section v-if="pending" class="surface-card orders-page__loading"></section>
@@ -111,6 +192,33 @@ async function handleSignOut() {
   display: grid;
   gap: 1rem;
   padding: 1.15rem;
+}
+
+.orders-page__hero-copy {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.orders-page__hero-copy p {
+  margin: 0;
+}
+
+.orders-page__hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.orders-page__editor {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+}
+
+.orders-page__editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .orders-page__loading {
