@@ -3,12 +3,24 @@ export type LaunchZoneId = "namilyango" | "gwafu" | "njerere";
 export type PaymentProvider = "mtn" | "airtel";
 export type PaymentStatus = "pending" | "confirmed" | "failed";
 export type OrderStatus = "Received" | "Preparing" | "Out for Delivery" | "Delivered";
+export type LocationSource = "manual" | "geolocation";
+export type NotificationEventType =
+  | "order_created"
+  | "payment_requested"
+  | "payment_confirmed"
+  | "order_received"
+  | "order_preparing"
+  | "order_out_for_delivery"
+  | "order_delivered";
 
 export interface MapPin {
   lat: number;
   lng: number;
   zoneId?: LaunchZoneId | null;
   confirmedAt?: string;
+  source?: LocationSource;
+  capturedAt?: string;
+  accuracyMeters?: number | null;
 }
 
 export interface LaunchZone {
@@ -117,6 +129,7 @@ export interface CheckoutSession {
 
 export interface OrderSummary {
   orderId: string;
+  customerAuthId?: string | null;
   supplierName: string;
   items: CartLine[];
   status: OrderStatus;
@@ -137,3 +150,21 @@ export interface MarketplaceResponse {
   platformFeeUgx: number;
 }
 
+export interface CustomerProfile {
+  authUserId: string;
+  phone: string;
+  fullName: string;
+  defaultPin: MapPin | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomerNotification {
+  id: string;
+  orderId: string;
+  eventType: NotificationEventType;
+  title: string;
+  body: string;
+  readAt: string | null;
+  createdAt: string;
+}

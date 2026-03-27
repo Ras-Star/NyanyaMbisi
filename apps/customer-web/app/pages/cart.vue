@@ -3,6 +3,10 @@ import { storeToRefs } from "pinia";
 import { useCartStore } from "~/stores/cart";
 import { useCurrency } from "~/composables/useCurrency";
 
+definePageMeta({
+  middleware: "customer-auth"
+});
+
 const cartStore = useCartStore();
 const { supplier, items, subtotalUgx, itemCount } = storeToRefs(cartStore);
 const { formatUGX } = useCurrency();

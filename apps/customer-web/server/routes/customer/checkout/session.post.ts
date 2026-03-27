@@ -1,10 +1,11 @@
 import { createError, defineEventHandler, readBody } from "h3";
-import { createCheckoutSession, getSupplierBySlug, getVerifiedCustomer } from "../../../data/customer-store";
+import { requireAuthenticatedCustomer } from "../../../utils/auth";
+import { createCheckoutSession, getSupplierBySlug, updateCustomerProfile } from "../../../data/customer-store";
 import type { CartLine, CheckoutCustomer, DeliveryQuote, PaymentProvider } from "../../../../shared/types";
 
 export default defineEventHandler(async (event) => {
+  const { user } = await requireAuthenticatedCustomer(event);
   const body = await readBody<{
-    verifiedToken?: string;
     supplierSlug?: string;
     items?: CartLine[];
     customer?: CheckoutCustomer;
@@ -12,10 +13,9 @@ export default defineEventHandler(async (event) => {
     paymentProvider?: PaymentProvider;
   }>(event);
 
-  const verifiedCustomer = body.verifiedToken ? await getVerifiedCustomer(body.verifiedToken) : null;
   const supplier = body.supplierSlug ? await getSupplierBySlug(body.supplierSlug) : null;
 
-  if (!verifiedCustomer || !supplier || !body.items?.length || !body.customer || !body.quote || !body.paymentProvider) {
+  if (!supplier || !body.items?.length || !body.customer || !body.quote || !body.paymentProvider) {
     throw createError({ statusCode: 400, statusMessage: "Checkout session payload is incomplete" });
   }
 
@@ -23,11 +23,30 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Delivery quote is not serviceable" });
   }
 
+  if (!body.customer.fullName.trim()) {
+    throw createError({ statusCode: 400, statusMessage: "Full name is required before creating an order" });
+  }
+
+  const phone = user.phone ?? body.customer.phone;
+
+  if (!phone) {
+    throw createError({ statusCode: 400, statusMessage: "Signed-in customer phone number is unavailable" });
+  }
+
+  await updateCustomerProfile(user.id, phone, {
+    fullName: body.customer.fullName.trim(),
+    defaultPin: body.customer.pin
+  });
+
   return createCheckoutSession({
+    customerAuthId: user.id,
     supplierId: supplier.id,
     supplierName: supplier.name,
     items: body.items,
-    customer: body.customer,
+    customer: {
+      ...body.customer,
+      phone
+    },
     quote: body.quote,
     paymentProvider: body.paymentProvider
   });

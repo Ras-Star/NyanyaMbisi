@@ -1,10 +1,14 @@
 import { randomUUID } from "node:crypto";
 import type {
   CartLine,
+  CustomerNotification,
+  CustomerProfile,
   CheckoutCustomer,
   CheckoutSession,
   DeliveryQuote,
+  MapPin,
   MarketplaceResponse,
+  NotificationEventType,
   OrderSummary,
   OtpStartResponse,
   OtpVerifyResponse,
@@ -74,8 +78,18 @@ interface VerifiedCustomerRow {
   phone: string;
 }
 
+interface CustomerProfileRow {
+  auth_user_id: string;
+  phone: string;
+  full_name: string;
+  default_pin: MapPin | null;
+  created_at: string;
+  updated_at: string;
+}
+
 interface OrderRow {
   id: string;
+  customer_auth_id: string | null;
   supplier_name: string;
   items: CartLine[];
   status: OrderSummary["status"];
@@ -87,6 +101,17 @@ interface OrderRow {
   customer: CheckoutCustomer;
   created_at: string;
   total_ugx: number;
+}
+
+interface OrderEventRow {
+  id: string;
+  order_id: string;
+  customer_auth_id: string;
+  event_type: NotificationEventType;
+  title: string;
+  body: string;
+  read_at: string | null;
+  created_at: string;
 }
 
 const supplierSelect = `
@@ -182,6 +207,7 @@ function mapSupplierStorefront(row: SupplierRow): SupplierStorefront {
 function mapOrder(row: OrderRow): OrderSummary {
   return {
     orderId: row.id,
+    customerAuthId: row.customer_auth_id,
     supplierName: row.supplier_name,
     items: row.items,
     status: row.status,
@@ -196,12 +222,60 @@ function mapOrder(row: OrderRow): OrderSummary {
   };
 }
 
+function mapCustomerProfile(row: CustomerProfileRow): CustomerProfile {
+  return {
+    authUserId: row.auth_user_id,
+    phone: row.phone,
+    fullName: row.full_name,
+    defaultPin: row.default_pin,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+function mapNotification(row: OrderEventRow): CustomerNotification {
+  return {
+    id: row.id,
+    orderId: row.order_id,
+    eventType: row.event_type,
+    title: row.title,
+    body: row.body,
+    readAt: row.read_at,
+    createdAt: row.created_at
+  };
+}
+
 function buildOrderTimeline(): OrderSummary["timeline"] {
   return [
     { label: "Received", complete: true },
     { label: "Preparing", complete: false },
     { label: "Out for Delivery", complete: false },
     { label: "Delivered", complete: false }
+  ];
+}
+
+function buildInitialOrderEvents(orderId: string, customerAuthId: string, supplierName: string): Array<{
+  order_id: string;
+  customer_auth_id: string;
+  event_type: NotificationEventType;
+  title: string;
+  body: string;
+}> {
+  return [
+    {
+      order_id: orderId,
+      customer_auth_id: customerAuthId,
+      event_type: "order_created",
+      title: "Order received",
+      body: `${supplierName} has received your basket and is preparing it for dispatch.`
+    },
+    {
+      order_id: orderId,
+      customer_auth_id: customerAuthId,
+      event_type: "payment_requested",
+      title: "Payment prompt sent",
+      body: "Approve the mobile money prompt on your phone to keep the order moving."
+    }
   ];
 }
 
@@ -396,6 +470,7 @@ export async function getVerifiedCustomer(token: string) {
 }
 
 export async function createCheckoutSession({
+  customerAuthId,
   supplierId,
   supplierName,
   items,
@@ -403,6 +478,7 @@ export async function createCheckoutSession({
   quote,
   paymentProvider
 }: {
+  customerAuthId: string;
   supplierId: string;
   supplierName: string;
   items: CartLine[];
@@ -460,6 +536,7 @@ export async function createCheckoutSession({
 
     const { error } = await client.from("orders").insert({
       id: orderId,
+      customer_auth_id: customerAuthId,
       supplier_id: supplierId,
       supplier_name: supplierName,
       items,
@@ -478,6 +555,14 @@ export async function createCheckoutSession({
       throw error;
     }
 
+    const { error: eventError } = await client.from("order_events").insert(
+      buildInitialOrderEvents(orderId, customerAuthId, supplierName)
+    );
+
+    if (eventError) {
+      throw eventError;
+    }
+
     return session;
   } catch (error) {
     logSupabaseFallback("createCheckoutSession", error);
@@ -491,20 +576,26 @@ export async function createCheckoutSession({
   }
 }
 
-export async function getOrder(orderId: string) {
+export async function getCustomerProfile(authUserId: string, phone: string): Promise<CustomerProfile> {
   const client = getServerSupabaseClient();
+  const fallbackProfile: CustomerProfile = {
+    authUserId,
+    phone,
+    fullName: "",
+    defaultPin: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
 
   if (!client) {
-    return getLocalOrder(orderId);
+    return fallbackProfile;
   }
 
   try {
     const { data, error } = await client
-      .from("orders")
-      .select(
-        "id, supplier_name, items, status, payment_provider, payment_reference, payment_status, timeline, quote, customer, created_at, total_ugx"
-      )
-      .eq("id", orderId)
+      .from("customer_profiles")
+      .select("auth_user_id, phone, full_name, default_pin, created_at, updated_at")
+      .eq("auth_user_id", authUserId)
       .maybeSingle();
 
     if (error) {
@@ -512,12 +603,191 @@ export async function getOrder(orderId: string) {
     }
 
     if (!data) {
-      return getLocalOrder(orderId);
+      const {
+        data: inserted,
+        error: insertError
+      } = await client
+        .from("customer_profiles")
+        .upsert({
+          auth_user_id: authUserId,
+          phone,
+          full_name: ""
+        })
+        .select("auth_user_id, phone, full_name, default_pin, created_at, updated_at")
+        .single();
+
+      if (insertError) {
+        throw insertError;
+      }
+
+      return mapCustomerProfile(inserted as CustomerProfileRow);
+    }
+
+    return mapCustomerProfile(data as CustomerProfileRow);
+  } catch (error) {
+    logSupabaseFallback("getCustomerProfile", error);
+    return fallbackProfile;
+  }
+}
+
+export async function updateCustomerProfile(
+  authUserId: string,
+  phone: string,
+  patch: Partial<Pick<CustomerProfile, "fullName" | "defaultPin">>
+): Promise<CustomerProfile> {
+  const client = getServerSupabaseClient();
+
+  if (!client) {
+    return {
+      authUserId,
+      phone,
+      fullName: patch.fullName ?? "",
+      defaultPin: patch.defaultPin ?? null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+  }
+
+  try {
+    const {
+      data,
+      error
+    } = await client
+      .from("customer_profiles")
+      .upsert({
+        auth_user_id: authUserId,
+        phone,
+        ...(typeof patch.fullName === "string" ? { full_name: patch.fullName } : {}),
+        ...(Object.prototype.hasOwnProperty.call(patch, "defaultPin") ? { default_pin: patch.defaultPin } : {}),
+        updated_at: new Date().toISOString()
+      })
+      .select("auth_user_id, phone, full_name, default_pin, created_at, updated_at")
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return mapCustomerProfile(data as CustomerProfileRow);
+  } catch (error) {
+    logSupabaseFallback("updateCustomerProfile", error);
+    return getCustomerProfile(authUserId, phone);
+  }
+}
+
+export async function listOrders(customerAuthId: string) {
+  const client = getServerSupabaseClient();
+
+  if (!client) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await client
+      .from("orders")
+      .select(
+        "id, customer_auth_id, supplier_name, items, status, payment_provider, payment_reference, payment_status, timeline, quote, customer, created_at, total_ugx"
+      )
+      .eq("customer_auth_id", customerAuthId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return (data as OrderRow[]).map(mapOrder);
+  } catch (error) {
+    logSupabaseFallback("listOrders", error);
+    return [];
+  }
+}
+
+export async function getOrder(orderId: string, customerAuthId?: string) {
+  const client = getServerSupabaseClient();
+
+  if (!client) {
+    return getLocalOrder(orderId);
+  }
+
+  try {
+    let query = client
+      .from("orders")
+      .select(
+        "id, customer_auth_id, supplier_name, items, status, payment_provider, payment_reference, payment_status, timeline, quote, customer, created_at, total_ugx"
+      )
+      .eq("id", orderId);
+
+    if (customerAuthId) {
+      query = query.eq("customer_auth_id", customerAuthId);
+    }
+
+    const { data, error } = await query.maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data) {
+      return null;
     }
 
     return mapOrder(data as OrderRow);
   } catch (error) {
     logSupabaseFallback("getOrder", error);
-    return getLocalOrder(orderId);
+    return null;
+  }
+}
+
+export async function listNotifications(customerAuthId: string) {
+  const client = getServerSupabaseClient();
+
+  if (!client) {
+    return [] as CustomerNotification[];
+  }
+
+  try {
+    const { data, error } = await client
+      .from("order_events")
+      .select("id, order_id, customer_auth_id, event_type, title, body, read_at, created_at")
+      .eq("customer_auth_id", customerAuthId)
+      .order("created_at", { ascending: false })
+      .limit(30);
+
+    if (error) {
+      throw error;
+    }
+
+    return (data as OrderEventRow[]).map(mapNotification);
+  } catch (error) {
+    logSupabaseFallback("listNotifications", error);
+    return [];
+  }
+}
+
+export async function markNotificationRead(customerAuthId: string, notificationId: string) {
+  const client = getServerSupabaseClient();
+
+  if (!client) {
+    return null;
+  }
+
+  try {
+    const readAt = new Date().toISOString();
+    const { data, error } = await client
+      .from("order_events")
+      .update({ read_at: readAt })
+      .eq("id", notificationId)
+      .eq("customer_auth_id", customerAuthId)
+      .select("id, order_id, customer_auth_id, event_type, title, body, read_at, created_at")
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    return data ? mapNotification(data as OrderEventRow) : null;
+  } catch (error) {
+    logSupabaseFallback("markNotificationRead", error);
+    return null;
   }
 }

@@ -1,10 +1,18 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
+import { useAuthStore } from "~/stores/auth";
 import { useCartStore } from "~/stores/cart";
 
 const cartStore = useCartStore();
+const authStore = useAuthStore();
+const route = useRoute();
 const { itemCount } = storeToRefs(cartStore);
+const { isAuthenticated, unreadNotificationCount, customerPhone } = storeToRefs(authStore);
 const { t } = useI18n();
+
+function openNotifications() {
+  authStore.setActivityOpen(true);
+}
 </script>
 
 <template>
@@ -22,9 +30,30 @@ const { t } = useI18n();
 
       <div class="header__actions">
         <LanguageToggle />
-        <NuxtLink class="header__cart" to="/cart">
+        <button
+          v-if="isAuthenticated"
+          type="button"
+          class="header__icon-button"
+          :aria-label="t('notifications.title')"
+          @click="openNotifications"
+        >
+          <span>{{ t("nav.notifications") }}</span>
+          <strong v-if="unreadNotificationCount">{{ unreadNotificationCount }}</strong>
+        </button>
+        <NuxtLink v-if="isAuthenticated" class="header__account" to="/orders">
+          <span>{{ customerPhone }}</span>
+          <strong>{{ t("nav.orders") }}</strong>
+        </NuxtLink>
+        <NuxtLink v-if="isAuthenticated" class="header__cart" to="/cart">
           <span>{{ t("nav.cart") }}</span>
           <strong>{{ itemCount }}</strong>
+        </NuxtLink>
+        <NuxtLink
+          v-else-if="!route.path.startsWith('/login')"
+          class="btn btn--primary header__login"
+          :to="`/login?redirect=${encodeURIComponent(route.fullPath)}`"
+        >
+          {{ t("nav.signIn") }}
         </NuxtLink>
       </div>
     </div>
@@ -104,6 +133,43 @@ const { t } = useI18n();
   gap: 0.55rem;
 }
 
+.header__icon-button,
+.header__account {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.38rem 0.75rem;
+  border-radius: 999px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-sm);
+  font-weight: 800;
+}
+
+.header__icon-button strong {
+  min-width: 1.55rem;
+  min-height: 1.55rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--brand-sun), #ffd75d);
+}
+
+.header__account {
+  display: grid;
+  gap: 0.08rem;
+  align-items: start;
+}
+
+.header__account span {
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+}
+
+.header__account strong {
+  font-size: 0.9rem;
+}
+
 .header__cart {
   display: inline-flex;
   align-items: center;
@@ -132,6 +198,11 @@ const { t } = useI18n();
   background: linear-gradient(135deg, var(--brand-sun), #ffd75d);
 }
 
+.header__login {
+  min-height: auto;
+  padding: 0.8rem 1rem;
+}
+
 @media (max-width: 620px) {
   .header__inner {
     align-items: flex-start;
@@ -146,6 +217,10 @@ const { t } = useI18n();
   }
 
   .header__copy span {
+    display: none;
+  }
+
+  .header__account span {
     display: none;
   }
 }

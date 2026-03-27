@@ -1,15 +1,25 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
 import { launchZones } from "~~/shared/service-areas";
+import { useAuthStore } from "~/stores/auth";
 import { useCartStore } from "~/stores/cart";
 import { useCustomerStore } from "~/stores/customer";
 
+definePageMeta({
+  middleware: "customer-auth"
+});
+
 const { t, locale } = useI18n();
 const api = useCustomerApi();
+const authStore = useAuthStore();
 const cartStore = useCartStore();
 const customerStore = useCustomerStore();
+const { initialize, saveProfile } = useCustomerAuth();
 const { supplier, items, subtotalUgx } = storeToRefs(cartStore);
-const { draft, otpSession, verifiedToken, verifiedCustomer, quote } = storeToRefs(customerStore);
+const { profile, customerPhone } = storeToRefs(authStore);
+const { draft, quote } = storeToRefs(customerStore);
+
+await initialize();
 
 useHead({
   title: "Checkout"
@@ -23,14 +33,13 @@ watch(
   { immediate: true }
 );
 
-const otpCode = ref("");
-const otpLoading = ref(false);
-const verifyLoading = ref(false);
-const quoteLoading = ref(false);
-const statusMessage = ref("");
-const errorMessage = ref("");
-
-const canContinue = computed(() => Boolean(items.value.length && verifiedToken.value && quote.value?.serviceable));
+watch(
+  [profile, customerPhone],
+  ([nextProfile, nextPhone]) => {
+    customerStore.hydrateFromProfile(nextProfile, nextPhone);
+  },
+  { immediate: true, deep: true }
+);
 
 watch(
   () => draft.value.pin,
@@ -40,53 +49,29 @@ watch(
   { deep: true }
 );
 
-async function sendOtp() {
-  errorMessage.value = "";
-  statusMessage.value = "";
+const quoteLoading = ref(false);
+const profileSaving = ref(false);
+const statusMessage = ref("");
+const errorMessage = ref("");
 
-  if (!draft.value.fullName || !draft.value.phone) {
-    errorMessage.value = t("checkout.requiredFields");
+const canContinue = computed(
+  () => Boolean(items.value.length && customerPhone.value && draft.value.fullName.trim() && quote.value?.serviceable)
+);
+
+async function persistProfile() {
+  if (!customerPhone.value) {
     return;
   }
 
-  otpLoading.value = true;
+  profileSaving.value = true;
 
   try {
-    const response = await api.startOtp({
-      fullName: draft.value.fullName,
-      phone: draft.value.phone
+    await saveProfile({
+      fullName: draft.value.fullName.trim(),
+      defaultPin: draft.value.pin
     });
-    customerStore.setOtpSession(response);
-    statusMessage.value = t("checkout.otpSent", { code: response.devCode });
-  } catch (error) {
-    errorMessage.value = (error as Error).message;
   } finally {
-    otpLoading.value = false;
-  }
-}
-
-async function verifyOtpCode() {
-  errorMessage.value = "";
-  statusMessage.value = "";
-
-  if (!otpSession.value || !otpCode.value) {
-    errorMessage.value = t("checkout.startOtpFirst");
-    return;
-  }
-
-  verifyLoading.value = true;
-
-  try {
-    const response = await api.verifyOtp({
-      sessionId: otpSession.value.sessionId,
-      code: otpCode.value
-    });
-    customerStore.setVerified(response);
-    statusMessage.value = t("checkout.phoneVerified");
-  } catch (error) {
-    errorMessage.value = (error as Error).message;
-  } finally {
-    verifyLoading.value = false;
+    profileSaving.value = false;
   }
 }
 
@@ -99,18 +84,22 @@ async function refreshQuote() {
     return;
   }
 
+  if (!draft.value.fullName.trim()) {
+    errorMessage.value = t("checkout.nameRequired");
+    return;
+  }
+
   quoteLoading.value = true;
 
   try {
+    await persistProfile();
     const response = await api.getDeliveryQuote({
       supplierSlug: supplier.value.slug,
       pin: draft.value.pin,
       subtotalUgx: subtotalUgx.value
     });
     customerStore.setQuote(response);
-    statusMessage.value = response.serviceable
-      ? t("checkout.quoteReady")
-      : t("checkout.quoteOutside");
+    statusMessage.value = response.serviceable ? t("checkout.quoteReady") : t("checkout.quoteOutside");
   } catch (error) {
     errorMessage.value = (error as Error).message;
   } finally {
@@ -149,25 +138,16 @@ async function refreshQuote() {
 
             <label class="field-stack">
               <span class="field-label">{{ t("checkout.phone") }}</span>
-              <input v-model="draft.phone" class="field-input" type="tel" placeholder="+256 7..." />
+              <input :value="customerPhone" class="field-input" type="tel" readonly />
             </label>
 
-            <div class="checkout-page__actions">
-              <button type="button" class="btn btn--secondary" :disabled="otpLoading" @click="sendOtp">
-                {{ t("checkout.otpButton") }}
-              </button>
-              <label class="field-stack checkout-page__otp">
-                <span class="field-label">{{ t("checkout.code") }}</span>
-                <input v-model="otpCode" class="field-input" type="text" inputmode="numeric" />
-              </label>
-              <button type="button" class="btn btn--primary" :disabled="verifyLoading" @click="verifyOtpCode">
-                {{ t("checkout.verifyButton") }}
-              </button>
+            <div class="status-note is-success">
+              <strong>{{ t("checkout.signedIn") }}</strong>
+              <span>{{ customerPhone }}</span>
             </div>
 
-            <div v-if="verifiedCustomer" class="status-note is-success">
-              <strong>{{ t("checkout.verified") }}</strong>
-              <span>{{ verifiedCustomer.phone }}</span>
+            <div v-if="profileSaving" class="status-note">
+              <strong>{{ t("checkout.savingProfile") }}</strong>
             </div>
           </div>
         </section>
@@ -215,7 +195,6 @@ async function refreshQuote() {
         <section class="surface-card checkout-page__panel">
           <div v-if="statusMessage" class="status-note is-success">
             <strong>{{ statusMessage }}</strong>
-            <span v-if="otpSession?.devCode">Demo OTP: {{ otpSession.devCode }}</span>
           </div>
 
           <div v-if="errorMessage" class="status-note is-danger">
@@ -252,15 +231,6 @@ async function refreshQuote() {
   gap: 0.95rem;
 }
 
-.checkout-page__actions {
-  display: grid;
-  gap: 0.9rem;
-}
-
-.checkout-page__otp {
-  align-self: end;
-}
-
 .checkout-page__quote-actions {
   display: grid;
   gap: 0.9rem;
@@ -272,11 +242,6 @@ async function refreshQuote() {
 }
 
 @media (min-width: 760px) {
-  .checkout-page__actions {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: end;
-  }
-
   .checkout-page__quote-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

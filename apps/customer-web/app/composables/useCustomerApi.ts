@@ -2,6 +2,8 @@ import type {
   CartLine,
   CheckoutCustomer,
   CheckoutSession,
+  CustomerNotification,
+  CustomerProfile,
   DeliveryQuote,
   MarketplaceResponse,
   MapPin,
@@ -11,6 +13,7 @@ import type {
   PaymentProvider,
   SupplierStorefront
 } from "~~/shared/types";
+import { useAuthStore } from "~/stores/auth";
 
 function resolveRoute(base: string, path: string) {
   const normalizedBase = base.trim().replace(/\/$/, "");
@@ -19,12 +22,43 @@ function resolveRoute(base: string, path: string) {
 
 export function useCustomerApi() {
   const config = useRuntimeConfig();
+  const authStore = useAuthStore();
   const route = (path: string) => resolveRoute(config.public.customerApiBase, path);
+  const authHeaders = async (): Promise<Record<string, string>> => {
+    const accessToken = authStore.session?.access_token ?? "";
+    return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+  };
 
   return {
     getMarketplace: () => $fetch<MarketplaceResponse>(route("/customer/marketplace")),
     getSupplier: (slug: string) => $fetch<SupplierStorefront>(route(`/customer/suppliers/${slug}`)),
-    getOrder: (orderId: string) => $fetch<OrderSummary>(route(`/customer/orders/${orderId}`)),
+    getProfile: async () =>
+      $fetch<CustomerProfile>(route("/customer/profile"), {
+        headers: await authHeaders()
+      }),
+    updateProfile: async (payload: { fullName?: string; defaultPin?: MapPin | null }) =>
+      $fetch<CustomerProfile>(route("/customer/profile"), {
+        method: "PATCH",
+        headers: await authHeaders(),
+        body: payload
+      }),
+    getOrders: async () =>
+      $fetch<OrderSummary[]>(route("/customer/orders"), {
+        headers: await authHeaders()
+      }),
+    getOrder: async (orderId: string) =>
+      $fetch<OrderSummary>(route(`/customer/orders/${orderId}`), {
+        headers: await authHeaders()
+      }),
+    getNotifications: async () =>
+      $fetch<CustomerNotification[]>(route("/customer/notifications"), {
+        headers: await authHeaders()
+      }),
+    markNotificationRead: async (notificationId: string) =>
+      $fetch<CustomerNotification>(route(`/customer/notifications/${notificationId}/read`), {
+        method: "POST",
+        headers: await authHeaders()
+      }),
     getDeliveryQuote: (payload: { supplierSlug: string; pin: MapPin | null; subtotalUgx: number }) =>
       $fetch<DeliveryQuote>(route("/customer/delivery-quote"), {
         method: "POST",
@@ -40,8 +74,7 @@ export function useCustomerApi() {
         method: "POST",
         body: payload
       }),
-    createCheckoutSession: (payload: {
-      verifiedToken: string;
+    createCheckoutSession: async (payload: {
       supplierSlug: string;
       items: CartLine[];
       customer: CheckoutCustomer;
@@ -50,8 +83,8 @@ export function useCustomerApi() {
     }) =>
       $fetch<CheckoutSession>(route("/customer/checkout/session"), {
         method: "POST",
+        headers: await authHeaders(),
         body: payload
       })
   };
 }
-

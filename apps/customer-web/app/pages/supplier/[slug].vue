@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
 import type { Product } from "~~/shared/types";
+import { useAuthStore } from "~/stores/auth";
 import { useCartStore } from "~/stores/cart";
 import { useCurrency } from "~/composables/useCurrency";
 
 const route = useRoute();
 const api = useCustomerApi();
 const cartStore = useCartStore();
+const authStore = useAuthStore();
+const { initialize } = useCustomerAuth();
 const { supplier: cartSupplier, items } = storeToRefs(cartStore);
+const { isAuthenticated } = storeToRefs(authStore);
 const { formatUGX, formatKm } = useCurrency();
 const { t } = useI18n();
 
@@ -42,7 +46,14 @@ const filteredProducts = computed(() => {
     : supplier.value.products.filter((product) => product.category === activeCategory.value);
 });
 
-function addProduct(product: Product) {
+async function addProduct(product: Product) {
+  await initialize();
+
+  if (!isAuthenticated.value) {
+    await navigateTo(`/login?redirect=${encodeURIComponent(route.fullPath)}`);
+    return;
+  }
+
   if (!supplier.value) {
     return;
   }

@@ -2,7 +2,7 @@ import { useCartStore } from "~/stores/cart";
 import { useCustomerStore } from "~/stores/customer";
 
 const CART_KEY = "nyanya-mbisi-cart-v1";
-const CUSTOMER_KEY = "nyanya-mbisi-customer-v1";
+const CUSTOMER_KEY = "nyanya-mbisi-customer-v2";
 
 export default defineNuxtPlugin(() => {
   const cartStore = useCartStore();
@@ -34,9 +34,6 @@ export default defineNuxtPlugin(() => {
       CUSTOMER_KEY,
       JSON.stringify({
         draft: state.draft,
-        otpSession: state.otpSession,
-        verifiedToken: state.verifiedToken,
-        verifiedCustomer: state.verifiedCustomer,
         quote: state.quote,
         paymentProvider: state.paymentProvider,
         paymentSession: state.paymentSession
@@ -44,4 +41,3 @@ export default defineNuxtPlugin(() => {
     );
   });
 });
-

@@ -2,10 +2,9 @@ import { defineStore } from "pinia";
 import type {
   CheckoutCustomer,
   CheckoutSession,
+  CustomerProfile,
   DeliveryQuote,
   LocaleCode,
-  OtpStartResponse,
-  OtpVerifyResponse,
   PaymentProvider
 } from "~~/shared/types";
 
@@ -20,9 +19,6 @@ export const useCustomerStore = defineStore("customer", {
       pin: null,
       locale: "en"
     } as CheckoutCustomer,
-    otpSession: null as OtpStartResponse | null,
-    verifiedToken: "" as string,
-    verifiedCustomer: null as OtpVerifyResponse["customer"] | null,
     quote: null as DeliveryQuote | null,
     paymentProvider: "mtn" as PaymentProvider,
     paymentSession: null as CheckoutSession | null
@@ -31,9 +27,6 @@ export const useCustomerStore = defineStore("customer", {
     hydrate(
       payload: Partial<{
         draft: CheckoutCustomer;
-        otpSession: OtpStartResponse | null;
-        verifiedToken: string;
-        verifiedCustomer: OtpVerifyResponse["customer"] | null;
         quote: DeliveryQuote | null;
         paymentProvider: PaymentProvider;
         paymentSession: CheckoutSession | null;
@@ -50,13 +43,6 @@ export const useCustomerStore = defineStore("customer", {
     setLocale(locale: LocaleCode) {
       this.draft.locale = locale;
     },
-    setOtpSession(session: OtpStartResponse | null) {
-      this.otpSession = session;
-    },
-    setVerified(result: OtpVerifyResponse | null) {
-      this.verifiedToken = result?.token ?? "";
-      this.verifiedCustomer = result?.customer ?? null;
-    },
     setQuote(quote: DeliveryQuote | null) {
       this.quote = quote;
     },
@@ -66,7 +52,32 @@ export const useCustomerStore = defineStore("customer", {
     setPaymentSession(session: CheckoutSession | null) {
       this.paymentSession = session;
     },
+    hydrateFromProfile(profile: CustomerProfile | null, phone: string) {
+      if (!profile && !phone) {
+        return;
+      }
+
+      this.draft = {
+        ...this.draft,
+        phone: profile?.phone || phone || this.draft.phone,
+        fullName: profile?.fullName || this.draft.fullName,
+        pin: profile?.defaultPin ?? this.draft.pin
+      };
+    },
     resetAfterOrder() {
+      this.quote = null;
+      this.paymentSession = null;
+    },
+    resetForSignOut() {
+      this.draft = {
+        fullName: "",
+        phone: "",
+        landmark: "",
+        areaHint: "",
+        notes: "",
+        pin: null,
+        locale: this.draft.locale
+      };
       this.quote = null;
       this.paymentSession = null;
     }

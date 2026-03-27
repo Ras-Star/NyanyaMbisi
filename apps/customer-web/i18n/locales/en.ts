@@ -6,6 +6,7 @@ export default {
     added: "Added",
     continue: "Continue",
     calculate: "Refresh quote",
+    close: "Close",
     loading: "Loading",
     empty: "Nothing here yet",
     verified: "Verified",
@@ -24,7 +25,11 @@ export default {
   nav: {
     marketplace: "Marketplace",
     cart: "Cart",
-    checkout: "Checkout"
+    checkout: "Checkout",
+    notifications: "Alerts",
+    orders: "Orders",
+    signIn: "Sign in",
+    signOut: "Sign out"
   },
   hero: {
     eyebrow: "Hyper-local groceries",
@@ -129,10 +134,8 @@ export default {
   checkout: {
     title: "Checkout",
     subtitle: "Confirm your phone, delivery pin, and landmark details.",
-    authTitle: "Phone verification",
-    authBody: "We use a phone OTP at checkout so repeat customers can track orders later.",
-    otpButton: "Send OTP",
-    verifyButton: "Verify code",
+    authTitle: "Signed-in customer",
+    authBody: "Your phone account is active. Add the delivery contact details you want reused next time.",
     name: "Full name",
     phone: "Phone number",
     code: "OTP code",
@@ -140,11 +143,14 @@ export default {
     area: "Village / zone note",
     notes: "Delivery note",
     verified: "Phone verified",
+    signedIn: "Signed in with your phone number",
+    savingProfile: "Saving customer details...",
     quoteTitle: "Delivery quote",
     quoteOut: "This location is outside the active launch area.",
     continuePayment: "Continue to payment",
     launchArea: "Launch zone",
     requiredFields: "Full name and phone are required before sending OTP.",
+    nameRequired: "Add your full name before continuing to delivery pricing.",
     otpSent: "OTP sent. Demo code: {code}",
     startOtpFirst: "Start the OTP flow and enter the code first.",
     phoneVerified: "Phone verified. You can now request a delivery quote.",
@@ -168,7 +174,7 @@ export default {
     pending: "Payment request created",
     track: "View pending order",
     incomplete: "Checkout is not complete yet.",
-    requirements: "Finish checkout verification and delivery pricing before initiating payment."
+    requirements: "Finish your signed-in checkout details and delivery pricing before initiating payment."
   },
   order: {
     title: "Order received",
@@ -182,10 +188,39 @@ export default {
     currentStepBody: "Completed or active",
     pendingStepBody: "Waiting for supplier update"
   },
+  orders: {
+    title: "Previous orders",
+    subtitle: "Track your recent baskets and reopen the details any time.",
+    viewOrder: "View order",
+    placedAt: "Placed",
+    emptyTitle: "You do not have any orders yet.",
+    emptyBody: "Your first completed checkout will appear here."
+  },
+  notifications: {
+    eyebrow: "Activity",
+    title: "Notifications",
+    unread: "Unread",
+    read: "Read",
+    emptyTitle: "No notifications yet",
+    emptyBody: "Order updates and delivery progress will appear here."
+  },
+  login: {
+    title: "Sign in with your phone",
+    subtitle: "Use the SMS code from Supabase phone auth to unlock cart, checkout, orders, and alerts.",
+    sendCode: "Send code",
+    verifyCode: "Verify and continue",
+    codeSent: "Code sent to {phone}. Enter it below to continue.",
+    success: "Phone verified. Redirecting..."
+  },
   location: {
     title: "Delivery location",
-    body: "Tap the map or drag the sliders to place your delivery pin, then confirm it.",
+    body: "Use live location or place the pin manually, then confirm the delivery point you want saved.",
     unavailable: "Google Maps was unavailable, so the app is using the local service map fallback.",
+    geolocationUnavailable: "Live location is unavailable on this device right now.",
+    geolocationDenied: "Location permission was denied. You can still place the pin manually.",
+    useLive: "Use my live location",
+    stopLive: "Stop following",
+    accuracy: "Accuracy",
     latitude: "Latitude",
     longitude: "Longitude",
     confirmPin: "Confirm delivery pin",

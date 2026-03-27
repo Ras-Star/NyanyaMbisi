@@ -1,15 +1,26 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
+import { useAuthStore } from "~/stores/auth";
 import { useCartStore } from "~/stores/cart";
 import { useCurrency } from "~/composables/useCurrency";
 
 const route = useRoute();
 const cartStore = useCartStore();
+const authStore = useAuthStore();
 const { itemCount, subtotalUgx } = storeToRefs(cartStore);
+const { isAuthenticated } = storeToRefs(authStore);
 const { formatUGX } = useCurrency();
 const { t } = useI18n();
 
-const visible = computed(() => itemCount.value > 0 && !route.path.startsWith("/cart") && !route.path.startsWith("/checkout") && !route.path.startsWith("/order"));
+const visible = computed(
+  () =>
+    isAuthenticated.value &&
+    itemCount.value > 0 &&
+    !route.path.startsWith("/cart") &&
+    !route.path.startsWith("/checkout") &&
+    !route.path.startsWith("/order") &&
+    !route.path.startsWith("/orders")
+);
 </script>
 
 <template>

@@ -6,6 +6,7 @@ export default {
     added: "Kigattiddwa",
     continue: "Weyongereyo",
     calculate: "Ddamu okubala",
+    close: "Ggalawo",
     loading: "Kikyali kulindirira",
     empty: "Tewali kintu wano",
     verified: "Kikakasiddwa",
@@ -24,7 +25,11 @@ export default {
   nav: {
     marketplace: "Akatale",
     cart: "Akasante",
-    checkout: "Okusasula"
+    checkout: "Okusasula",
+    notifications: "Amategeezo",
+    orders: "Oda",
+    signIn: "Yingira",
+    signOut: "Fuluma"
   },
   hero: {
     eyebrow: "Eby'emmere eby'oku kitundu",
@@ -129,10 +134,8 @@ export default {
   checkout: {
     title: "Okusasula",
     subtitle: "Kakasa essimu yo, pin y'okutuusa, n'ebikwata ku kifo.",
-    authTitle: "Okukakasa essimu",
-    authBody: "Tukozesa OTP ku kusasula abasubiddwa okusobola okulaba oda zaabwe oluvannyuma.",
-    otpButton: "Weereza OTP",
-    verifyButton: "Kakasa code",
+    authTitle: "Kasitoma ayingidde",
+    authBody: "Akaunti yo ey'essimu ekyaliwo. Teekawo ebikwata ku kutuusa obeere obikozesa n'emirundi egiddako.",
     name: "Erinnya lyonna",
     phone: "Namba y'essimu",
     code: "Code ya OTP",
@@ -140,11 +143,14 @@ export default {
     area: "Ekibuga / zone",
     notes: "Obubaka bw'okutuusa",
     verified: "Essimu ekakasiddwa",
+    signedIn: "Oyingidde n'ennamba yo ey'essimu",
+    savingProfile: "Ebikwata ku kasitoma biterekebwa...",
     quoteTitle: "Ebbalirira ly'okutuusa",
     quoteOut: "Ekifo kino kiri ebweru w'obuweereza obuliwo kati.",
     continuePayment: "Genda ku kusasula kw'essimu",
     launchArea: "Zone y'okutandikira",
     requiredFields: "Erinnya lyonna ne namba y'essimu byetaagisa okusooka okuweereza OTP.",
+    nameRequired: "Teekamu erinnya lyo lyonna nga tonnagenda mu kubala ssente z'okutuusa.",
     otpSent: "OTP eweerezeddwa. Demo code: {code}",
     startOtpFirst: "Tandika okusaba kwa OTP era oteekemu code okusooka.",
     phoneVerified: "Essimu ekakasiddwa. Kati osobola okusaba ebbalirira ly'okutuusa.",
@@ -168,7 +174,7 @@ export default {
     pending: "Okusaba okusasula kutondeddwa",
     track: "Laba oda ekyalindiriddwa",
     incomplete: "Okusasula tekunnaggwa.",
-    requirements: "Mala okukakasa checkout n'ebbaliirira ly'okutuusa nga tonnatandika kusasula."
+    requirements: "Mala ebikwata ku checkout yo ng'oyingidde n'ebbaliirira ly'okutuusa nga tonnatandika kusasula."
   },
   order: {
     title: "Oda eyaniriziddwa",
@@ -182,10 +188,39 @@ export default {
     currentStepBody: "Kiwedde oba kiri mu kukolebwa",
     pendingStepBody: "Kikyali kulindirira okuggya ku musuubuzi"
   },
+  orders: {
+    title: "Oda ezaayita",
+    subtitle: "Londoola obusante bwo obusembyeyo era oddemu obulabe buli lw'oyagala.",
+    viewOrder: "Laba oda",
+    placedAt: "Yateekeddwa",
+    emptyTitle: "Tonnaba na oda yonna.",
+    emptyBody: "Checkout yo esooka bw'enaggwa ejja kulabika wano."
+  },
+  notifications: {
+    eyebrow: "Bikolebwa",
+    title: "Amategeezo",
+    unread: "Teganabikkulwa",
+    read: "Gabikkuddwa",
+    emptyTitle: "Tewali mategeezo",
+    emptyBody: "Okukyuka kwa oda n'entambula y'okutuusa bijja kulabika wano."
+  },
+  login: {
+    title: "Yingira n'ennamba yo ey'essimu",
+    subtitle: "Kozesa code ya SMS okuva ku Supabase phone auth okufunamu akasante, checkout, oda, n'amategeezo.",
+    sendCode: "Weereza code",
+    verifyCode: "Kakasa ogende mu maaso",
+    codeSent: "Code eweerezeddwa ku {phone}. Giteeke wansi oyongereyo.",
+    success: "Essimu ekakasiddwa. Tukutwala mu maaso..."
+  },
   location: {
     title: "Ekifo gy'otwalirwa",
-    body: "Nyiga ku maapu oba koresha sliders okuteeka pin yo, oluvannyuma gikakase.",
+    body: "Kozesa live location oba teeka pin mu ngalo, oluvannyuma okakase ekifo ky'oyagala okuterekebwa.",
     unavailable: "Google Maps teteredde, kale app ekkozesa maapu y'obuweereza ey'omu kitundu.",
+    geolocationUnavailable: "Live location tetesobose ku kyuma kino mu kaseera kano.",
+    geolocationDenied: "Olukusa lw'ekifo lwalemeddwa. Osobola okukozesa pin n'engalo.",
+    useLive: "Kozesa live location yange",
+    stopLive: "Komya okugoberera",
+    accuracy: "Obutuufu",
     latitude: "Latitude",
     longitude: "Longitude",
     confirmPin: "Kakasa pin y'okutuusa",

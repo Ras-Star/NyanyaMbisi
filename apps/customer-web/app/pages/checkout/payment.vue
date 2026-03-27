@@ -1,14 +1,24 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
+import { useAuthStore } from "~/stores/auth";
 import { useCartStore } from "~/stores/cart";
 import { useCustomerStore } from "~/stores/customer";
 
+definePageMeta({
+  middleware: "customer-auth"
+});
+
+const authStore = useAuthStore();
 const cartStore = useCartStore();
 const customerStore = useCustomerStore();
 const api = useCustomerApi();
+const { initialize, saveProfile, refreshNotifications } = useCustomerAuth();
+const { customerPhone } = storeToRefs(authStore);
 const { supplier, items, subtotalUgx } = storeToRefs(cartStore);
-const { draft, quote, verifiedToken, paymentProvider, paymentSession } = storeToRefs(customerStore);
+const { draft, quote, paymentProvider, paymentSession } = storeToRefs(customerStore);
 const { t } = useI18n();
+
+await initialize();
 
 useHead({
   title: "Payment"
@@ -20,7 +30,7 @@ const errorMessage = ref("");
 async function createSession() {
   errorMessage.value = "";
 
-  if (!supplier.value || !quote.value || !verifiedToken.value) {
+  if (!supplier.value || !quote.value || !customerPhone.value || !draft.value.fullName.trim()) {
     errorMessage.value = t("payment.requirements");
     return;
   }
@@ -28,16 +38,24 @@ async function createSession() {
   loading.value = true;
 
   try {
+    await saveProfile({
+      fullName: draft.value.fullName.trim(),
+      defaultPin: draft.value.pin
+    });
+
     const session = await api.createCheckoutSession({
-      verifiedToken: verifiedToken.value,
       supplierSlug: supplier.value.slug,
       items: items.value,
-      customer: draft.value,
+      customer: {
+        ...draft.value,
+        phone: customerPhone.value
+      },
       quote: quote.value,
       paymentProvider: paymentProvider.value
     });
 
     customerStore.setPaymentSession(session);
+    await refreshNotifications();
   } catch (error) {
     errorMessage.value = (error as Error).message;
   } finally {
@@ -54,7 +72,7 @@ async function createSession() {
       <p class="muted">{{ t("payment.subtitle") }}</p>
     </section>
 
-    <section v-if="!items.length || !quote || !verifiedToken" class="surface-card empty-state">
+    <section v-if="!items.length || !quote || !customerPhone || !draft.fullName.trim()" class="surface-card empty-state">
       <h2 class="title-md">{{ t("payment.incomplete") }}</h2>
       <NuxtLink class="btn btn--primary" to="/checkout">{{ t("nav.checkout") }}</NuxtLink>
     </section>
@@ -104,7 +122,7 @@ async function createSession() {
             <strong>{{ paymentSession.nextStepTitle }}</strong>
             <span>{{ paymentSession.nextStepBody }}</span>
           </div>
-          <NuxtLink v-if="paymentSession" class="btn btn--sun" :to="`/order/${paymentSession.orderId}/pending`">
+          <NuxtLink v-if="paymentSession" class="btn btn--sun" :to="`/orders/${paymentSession.orderId}`">
             {{ t("payment.track") }}
           </NuxtLink>
         </section>
